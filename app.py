@@ -2,6 +2,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 import tempfile
 import glob
 import hashlib
@@ -10,6 +11,8 @@ from pathlib import Path
 from flask import Flask, request, jsonify, render_template, send_from_directory, abort
 
 app = Flask(__name__)
+
+YT_DLP_CMD = [sys.executable, "-m", "yt_dlp"]
 
 # Transcripts are saved here so you can browse them later or download as files.
 TRANSCRIPTS_DIR = Path(__file__).parent / "transcripts"
@@ -82,7 +85,7 @@ def get_metadata(url: str) -> dict:
     """Fetch video metadata via yt-dlp --dump-json. Returns {} on failure."""
     try:
         result = subprocess.run(
-            ["yt-dlp", "--skip-download", "--no-playlist", "--dump-json", url],
+            YT_DLP_CMD + [ "--skip-download", "--no-playlist", "--dump-json", url],
             capture_output=True, text=True, timeout=30, check=False,
         )
         if result.returncode == 0 and result.stdout.strip():
@@ -122,8 +125,7 @@ def fetch_transcript(url: str) -> dict:
 
         # Try manual subtitles first, fall back to auto-generated
         for attempt in ("manual", "auto"):
-            cmd = [
-                "yt-dlp",
+            cmd = YT_DLP_CMD + [
                 "--skip-download",
                 "--no-playlist",
                 "--sub-lang", "en",
