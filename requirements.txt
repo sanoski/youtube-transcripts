@@ -2,6 +2,5 @@
 mcp>=1.0
 yt-dlp>=2024.1.1
 
-# Optional: keep Flask + gunicorn only if you also want the web UI on Linode
-# flask>=3.0
-# gunicorn>=22.0
+flask>=3.0
+gunicorn>=22.0
