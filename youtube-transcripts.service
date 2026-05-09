@@ -24,10 +24,6 @@ RestartSec=5
 
 # Security hardening — limit what the service can do on the system
 NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-# Allow writing only to the transcripts dir and log dir
-ReadWritePaths=/home/peaches/Github/youtube-transcripts/transcripts /var/log/youtube-transcripts
 
 [Install]
 WantedBy=multi-user.target
