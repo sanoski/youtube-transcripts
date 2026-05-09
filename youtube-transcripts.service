@@ -5,12 +5,12 @@ After=network.target
 
 [Service]
 # Run as a dedicated non-root user for safety
-User=ytscripts
-Group=ytscripts
-WorkingDirectory=/opt/youtube-transcripts
+User=peaches
+Group=peaches
+WorkingDirectory=/home/peaches/Github/youtube-transcripts
 
 # Use the venv's gunicorn so we don't need system-level installs
-ExecStart=/opt/youtube-transcripts/venv/bin/gunicorn \
+ExecStart=/home/peaches/Github/youtube-transcripts/venv/bin/gunicorn \
     --workers 2 \
     --bind 127.0.0.1:5000 \
     --timeout 90 \
@@ -27,7 +27,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 # Allow writing only to the transcripts dir and log dir
-ReadWritePaths=/opt/youtube-transcripts/transcripts /var/log/youtube-transcripts
+ReadWritePaths=/home/peaches/Github/youtube-transcripts/transcripts /var/log/youtube-transcripts
 
 [Install]
 WantedBy=multi-user.target

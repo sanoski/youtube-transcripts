@@ -13,7 +13,7 @@ from flask import Flask, request, jsonify, render_template, send_from_directory,
 app = Flask(__name__)
 
 YT_DLP_CMD = [sys.executable, "-m", "yt_dlp"]
-COOKIES_FILE = Path("/opt/youtube-transcripts/cookies.txt")
+COOKIES_FILE = Path(__file__).parent / "cookies.txt"
 
 
 def _yt_dlp_base() -> list:
