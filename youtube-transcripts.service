@@ -1,0 +1,33 @@
+[Unit]
+Description=YouTube Transcript Extractor
+# Wait for the network to be up before starting — important on a VPS
+After=network.target
+
+[Service]
+# Run as a dedicated non-root user for safety
+User=ytscripts
+Group=ytscripts
+WorkingDirectory=/opt/youtube-transcripts
+
+# Use the venv's gunicorn so we don't need system-level installs
+ExecStart=/opt/youtube-transcripts/venv/bin/gunicorn \
+    --workers 2 \
+    --bind 127.0.0.1:5000 \
+    --timeout 90 \
+    --access-logfile /var/log/youtube-transcripts/access.log \
+    --error-logfile /var/log/youtube-transcripts/error.log \
+    app:app
+
+# Restart automatically if the process crashes
+Restart=on-failure
+RestartSec=5
+
+# Security hardening — limit what the service can do on the system
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+# Allow writing only to the transcripts dir and log dir
+ReadWritePaths=/opt/youtube-transcripts/transcripts /var/log/youtube-transcripts
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube Transcript Extractor</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #232635;
+      --border: #2e3147;
+      --accent: #5865f2;
+      --accent-hover: #4752c4;
+      --success: #3ba55c;
+      --warn: #faa81a;
+      --error: #ed4245;
+      --text: #dcddde;
+      --text-muted: #72767d;
+      --text-dim: #4f545c;
+      --radius: 8px;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --mono: "Cascadia Code", "Fira Code", "Consolas", monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px 80px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+    header h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+    header p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      width: 100%;
+      max-width: 780px;
+    }
+
+    /* URL input row */
+    .input-row {
+      display: flex;
+      gap: 10px;
+    }
+    .input-row input[type="url"] {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 0.95rem;
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .input-row input[type="url"]:focus {
+      border-color: var(--accent);
+    }
+    .input-row input[type="url"]::placeholder {
+      color: var(--text-dim);
+    }
+    button.primary {
+      background: var(--accent);
+      border: none;
+      border-radius: var(--radius);
+      color: #fff;
+      cursor: pointer;
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 10px 22px;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+    button.primary:hover:not(:disabled) { background: var(--accent-hover); }
+    button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Status bar */
+    #status {
+      margin-top: 14px;
+      font-size: 0.85rem;
+      min-height: 20px;
+      color: var(--text-muted);
+    }
+    #status.error { color: var(--error); }
+    #status.success { color: var(--success); }
+    #status.loading { color: var(--warn); }
+
+    /* Result section */
+    #result-section {
+      display: none;
+      margin-top: 28px;
+    }
+
+    .result-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+    .result-meta h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .badge.manual { background: #1e3a2f; color: var(--success); }
+    .badge.auto   { background: #3a2e1e; color: var(--warn); }
+
+    .action-buttons {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    button.secondary {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 500;
+      padding: 7px 14px;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    button.secondary:hover { background: var(--border); border-color: #3d4060; }
+    button.secondary.copied { color: var(--success); border-color: var(--success); }
+
+    /* Transcript textarea */
+    #transcript-box {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-family: var(--mono);
+      font-size: 0.82rem;
+      line-height: 1.65;
+      padding: 16px;
+      resize: vertical;
+      min-height: 320px;
+      max-height: 60vh;
+      outline: none;
+      overflow-y: auto;
+    }
+    #transcript-box:focus { border-color: var(--accent); }
+
+    /* Word / char count */
+    .count-bar {
+      margin-top: 6px;
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      text-align: right;
+    }
+
+    /* Recent transcripts */
+    #recent-section {
+      width: 100%;
+      max-width: 780px;
+      margin-top: 28px;
+    }
+    #recent-section h3 {
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .recent-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .recent-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .recent-item:hover { border-color: var(--accent); }
+    .recent-title {
+      font-size: 0.88rem;
+      color: var(--text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+    }
+    .recent-meta {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .recent-download {
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 500;
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+    .recent-download:hover { text-decoration: underline; }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--warn);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>YouTube Transcript Extractor</h1>
+  <p>Paste a YouTube URL to extract the transcript as clean text.</p>
+</header>
+
+<div class="card">
+  <div class="input-row">
+    <input type="url" id="url-input" placeholder="https://www.youtube.com/watch?v=..." autocomplete="off" spellcheck="false">
+    <button class="primary" id="extract-btn" onclick="extractTranscript()">Extract</button>
+  </div>
+  <div id="status"></div>
+
+  <div id="result-section">
+    <div class="result-header">
+      <div class="result-meta">
+        <h2 id="video-title"></h2>
+        <span class="badge" id="caption-badge"></span>
+      </div>
+      <div class="action-buttons">
+        <button class="secondary" id="copy-btn" onclick="copyTranscript()">Copy</button>
+        <a id="download-link" class="secondary" style="display:inline-flex;align-items:center;padding:7px 14px;border:1px solid var(--border);border-radius:var(--radius);color:var(--text);text-decoration:none;font-size:0.85rem;font-weight:500;" href="#">Download .txt</a>
+      </div>
+    </div>
+
+    <textarea id="transcript-box" readonly></textarea>
+    <div class="count-bar" id="count-bar"></div>
+  </div>
+</div>
+
+<div id="recent-section">
+  <h3>Recent Transcripts</h3>
+  <div class="recent-list" id="recent-list"></div>
+</div>
+
+<script>
+  const urlInput    = document.getElementById('url-input');
+  const extractBtn  = document.getElementById('extract-btn');
+  const statusEl    = document.getElementById('status');
+  const resultSec   = document.getElementById('result-section');
+  const titleEl     = document.getElementById('video-title');
+  const badgeEl     = document.getElementById('caption-badge');
+  const transcriptBox = document.getElementById('transcript-box');
+  const countBar    = document.getElementById('count-bar');
+  const copyBtn     = document.getElementById('copy-btn');
+  const downloadLink = document.getElementById('download-link');
+  const recentList  = document.getElementById('recent-list');
+
+  // Allow pressing Enter in the URL field to trigger extraction
+  urlInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') extractTranscript();
+  });
+
+  async function extractTranscript() {
+    const url = urlInput.value.trim();
+    if (!url) {
+      setStatus('Paste a YouTube URL first.', 'error');
+      return;
+    }
+
+    setStatus('<span class="spinner"></span>Extracting transcript — this takes a few seconds…', 'loading');
+    extractBtn.disabled = true;
+    resultSec.style.display = 'none';
+
+    try {
+      const res = await fetch('/api/extract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+
+      if (data.error) {
+        setStatus(data.error, 'error');
+        return;
+      }
+
+      // Populate result
+      titleEl.textContent = data.title || data.video_id;
+      badgeEl.textContent = data.caption_type === 'manual' ? 'Manual captions' : 'Auto-generated';
+      badgeEl.className = 'badge ' + (data.caption_type === 'manual' ? 'manual' : 'auto');
+      transcriptBox.value = data.transcript;
+      updateCount();
+      downloadLink.href = `/transcripts/${encodeURIComponent(data.filename)}`;
+      downloadLink.download = data.filename;
+      resultSec.style.display = 'block';
+      setStatus(`Done. ${data.caption_type === 'manual' ? 'Manual' : 'Auto-generated'} captions found.`, 'success');
+      loadRecent();
+    } catch (err) {
+      setStatus('Network error — is the server running?', 'error');
+    } finally {
+      extractBtn.disabled = false;
+    }
+  }
+
+  function setStatus(html, type = '') {
+    statusEl.innerHTML = html;
+    statusEl.className = type;
+  }
+
+  function updateCount() {
+    const text = transcriptBox.value;
+    const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+    const chars = text.length;
+    countBar.textContent = `${words.toLocaleString()} words · ${chars.toLocaleString()} characters`;
+  }
+
+  async function copyTranscript() {
+    const text = transcriptBox.value;
+    if (!text) return;
+    await navigator.clipboard.writeText(text);
+    copyBtn.textContent = 'Copied!';
+    copyBtn.classList.add('copied');
+    setTimeout(() => {
+      copyBtn.textContent = 'Copy';
+      copyBtn.classList.remove('copied');
+    }, 2000);
+  }
+
+  async function loadRecent() {
+    try {
+      const res = await fetch('/api/recent');
+      const items = await res.json();
+      recentList.innerHTML = '';
+      if (!items.length) {
+        recentList.innerHTML = '<div style="color:var(--text-dim);font-size:0.85rem;padding:8px 0;">No transcripts yet.</div>';
+        return;
+      }
+      for (const item of items) {
+        const el = document.createElement('div');
+        el.className = 'recent-item';
+        el.innerHTML = `
+          <span class="recent-title" title="${escHtml(item.title)}">${escHtml(item.title)}</span>
+          <span class="recent-meta">${item.modified} · ${item.size_kb} KB</span>
+          <a class="recent-download" href="/transcripts/${encodeURIComponent(item.filename)}" download="${escHtml(item.filename)}" onclick="event.stopPropagation()">Download</a>
+        `;
+        // Click row to re-load transcript into the box
+        el.addEventListener('click', () => loadFromFile(item.filename, item.title, item.url));
+        recentList.appendChild(el);
+      }
+    } catch { /* silent — recent list is a convenience, not critical */ }
+  }
+
+  async function loadFromFile(filename, title, url) {
+    try {
+      const res = await fetch(`/transcripts/${encodeURIComponent(filename)}`);
+      let text = await res.text();
+      // Strip the header block (everything before the dashes line)
+      const dashIdx = text.indexOf('---\n\n');
+      if (dashIdx !== -1) text = text.slice(dashIdx + 5);
+      titleEl.textContent = title;
+      badgeEl.textContent = '';
+      badgeEl.className = 'badge';
+      transcriptBox.value = text;
+      updateCount();
+      downloadLink.href = `/transcripts/${encodeURIComponent(filename)}`;
+      downloadLink.download = filename;
+      if (url) urlInput.value = url;
+      resultSec.style.display = 'block';
+      setStatus('Loaded from saved transcript.', 'success');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch { /* ignore */ }
+  }
+
+  function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // Load recent transcripts on page load
+  loadRecent();
+</script>
+
+</body>
+</html>
