@@ -13,6 +13,14 @@ from flask import Flask, request, jsonify, render_template, send_from_directory,
 app = Flask(__name__)
 
 YT_DLP_CMD = [sys.executable, "-m", "yt_dlp"]
+COOKIES_FILE = Path("/opt/youtube-transcripts/cookies.txt")
+
+
+def _yt_dlp_base() -> list:
+    cmd = YT_DLP_CMD[:]
+    if COOKIES_FILE.exists():
+        cmd += ["--cookies", str(COOKIES_FILE)]
+    return cmd
 
 # Transcripts are saved here so you can browse them later or download as files.
 TRANSCRIPTS_DIR = Path(__file__).parent / "transcripts"
@@ -85,7 +93,7 @@ def get_metadata(url: str) -> dict:
     """Fetch video metadata via yt-dlp --dump-json. Returns {} on failure."""
     try:
         result = subprocess.run(
-            YT_DLP_CMD + [ "--skip-download", "--no-playlist", "--dump-json", url],
+            _yt_dlp_base() + ["--skip-download", "--no-playlist", "--dump-json", url],
             capture_output=True, text=True, timeout=30, check=False,
         )
         if result.returncode == 0 and result.stdout.strip():
@@ -125,7 +133,7 @@ def fetch_transcript(url: str) -> dict:
 
         # Try manual subtitles first, fall back to auto-generated
         for attempt in ("manual", "auto"):
-            cmd = YT_DLP_CMD + [
+            cmd = _yt_dlp_base() + [
                 "--skip-download",
                 "--no-playlist",
                 "--sub-lang", "en",
